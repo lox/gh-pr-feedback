@@ -1,0 +1,51 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Hermit
+        run: |
+          curl -fsSL https://github.com/cashapp/hermit/releases/download/stable/install.sh | /bin/bash
+          echo "$HOME/bin" >> $GITHUB_PATH
+
+      - name: Activate Hermit and install dependencies
+        run: |
+          source bin/activate-hermit
+          hermit install go svu goreleaser
+
+      - name: Get next version
+        id: version
+        run: |
+          source bin/activate-hermit
+          # Use svu to determine next version based on conventional commits
+          NEW_VERSION=$(svu next)
+          echo "version=${NEW_VERSION}" >> $GITHUB_OUTPUT
+          echo "Next version: ${NEW_VERSION}"
+
+      - name: Create tag
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git tag -a ${{ steps.version.outputs.version }} -m "Release ${{ steps.version.outputs.version }}"
+          git push origin ${{ steps.version.outputs.version }}
+
+      - name: Run GoReleaser
+        run: |
+          source bin/activate-hermit
+          goreleaser release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
