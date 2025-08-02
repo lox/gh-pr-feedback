@@ -68,6 +68,8 @@ type PRFeedback struct {
 func main() {
 	var jsonOutput bool
 	var targetDir string
+	var prNumber int
+	var repoName string
 
 	// Parse arguments
 	args := os.Args[1:]
@@ -76,7 +78,7 @@ func main() {
 		
 		// Handle flags
 		if arg == "--version" || arg == "-v" {
-			fmt.Println("gh-pr-feedback v1.1.0")
+			fmt.Println("gh-pr-feedback v1.2.0")
 			return
 		}
 		
@@ -90,13 +92,29 @@ func main() {
 			continue
 		}
 		
-		// Handle directory argument
-		if !strings.HasPrefix(arg, "-") && targetDir == "" {
-			targetDir = arg
-			// Validate directory exists
-			if _, err := os.Stat(targetDir); os.IsNotExist(err) {
-				fmt.Fprintf(os.Stderr, "Error: Directory '%s' does not exist\n", targetDir)
+		if arg == "--repo" || arg == "-R" {
+			if i+1 < len(args) {
+				repoName = args[i+1]
+				i++ // Skip next arg
+			} else {
+				fmt.Fprintf(os.Stderr, "Error: --repo requires a value\n")
 				os.Exit(1)
+			}
+			continue
+		}
+		
+		// Handle positional argument (could be PR number or directory)
+		if !strings.HasPrefix(arg, "-") {
+			// Try to parse as PR number first
+			if num, err := strconv.Atoi(arg); err == nil && num > 0 {
+				prNumber = num
+			} else if targetDir == "" {
+				targetDir = arg
+				// Validate directory exists
+				if _, err := os.Stat(targetDir); os.IsNotExist(err) {
+					fmt.Fprintf(os.Stderr, "Error: Directory '%s' does not exist\n", targetDir)
+					os.Exit(1)
+				}
 			}
 		}
 	}
@@ -130,17 +148,34 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Get current PR number
-	prNumber, repo, err := getCurrentPR(client)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		fmt.Fprintf(os.Stderr, "\nMake sure you're in a git repository with an open PR.\n")
-		fmt.Fprintf(os.Stderr, "You can check PR status with: gh pr status\n")
-		os.Exit(1)
+	// If PR number and repo are provided, use them directly
+	if prNumber > 0 && repoName != "" {
+		// Use provided PR number and repo
+	} else if prNumber > 0 {
+		// PR number provided but no repo - try to get repo from current directory
+		_, currentRepo, err := getCurrentPR(client)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: PR number provided but couldn't determine repository.\n")
+			fmt.Fprintf(os.Stderr, "Use --repo to specify the repository (e.g., --repo owner/name)\n")
+			os.Exit(1)
+		}
+		repoName = currentRepo
+	} else {
+		// No PR number provided - get current PR
+		currentPR, currentRepo, err := getCurrentPR(client)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			fmt.Fprintf(os.Stderr, "\nMake sure you're in a git repository with an open PR.\n")
+			fmt.Fprintf(os.Stderr, "You can check PR status with: gh pr status\n")
+			fmt.Fprintf(os.Stderr, "Or specify a PR number: gh pr-feedback 123 --repo owner/name\n")
+			os.Exit(1)
+		}
+		prNumber = currentPR
+		repoName = currentRepo
 	}
 
 	// Fetch PR details and review comments
-	feedback, err := getPRFeedback(client, repo, prNumber)
+	feedback, err := getPRFeedback(client, repoName, prNumber)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error fetching PR feedback: %v\n", err)
 		os.Exit(1)
@@ -341,7 +376,7 @@ func getPRFeedback(client *api.RESTClient, repo string, prNumber int) (*PRFeedba
 
 func getStatusChecks(repo string, prNumber int) ([]StatusCheck, error) {
 	// Use gh CLI to get status checks
-	cmd := exec.Command("gh", "pr", "view", strconv.Itoa(prNumber), "--json", "statusCheckRollup")
+	cmd := exec.Command("gh", "pr", "view", strconv.Itoa(prNumber), "--repo", repo, "--json", "statusCheckRollup")
 	output, err := cmd.Output()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get status checks: %w", err)
@@ -407,16 +442,24 @@ func extractRunID(detailsURL string) string {
 
 
 func printHelp() {
-	fmt.Println("Usage: gh pr-feedback [flags] [directory]")
-	fmt.Println("Extracts unresolved review feedback from the current PR")
+	fmt.Println("Usage: gh pr-feedback [flags] [pr-number|directory]")
+	fmt.Println("Extracts unresolved review feedback from a PR")
 	fmt.Println("")
 	fmt.Println("Arguments:")
-	fmt.Println("  directory        Optional path to git repository (default: current directory)")
+	fmt.Println("  pr-number        PR number to view feedback for")
+	fmt.Println("  directory        Path to git repository (default: current directory)")
 	fmt.Println("")
 	fmt.Println("Flags:")
 	fmt.Println("  -h, --help       Show help")
 	fmt.Println("  -j, --json       Output in JSON format")
+	fmt.Println("  -R, --repo       Repository name (owner/name)")
 	fmt.Println("  -v, --version    Show version")
+	fmt.Println("")
+	fmt.Println("Examples:")
+	fmt.Println("  gh pr-feedback                      # Current PR in current directory")
+	fmt.Println("  gh pr-feedback 117                  # PR 117 in current repo")
+	fmt.Println("  gh pr-feedback 117 --repo owner/name  # PR 117 in specified repo")
+	fmt.Println("  gh pr-feedback /path/to/repo        # Current PR in specified directory")
 }
 
 func printHumanReadable(feedback *PRFeedback) {

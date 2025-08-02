@@ -15,10 +15,14 @@ gh extension install .
 ## Usage
 
 ```bash
-# Current directory
+# Current PR in current directory
 gh pr-feedback
 
-# Specific directory
+# Specific PR number
+gh pr-feedback 117
+gh pr-feedback 117 --repo owner/name
+
+# Different directory
 gh pr-feedback /path/to/repo
 
 # JSON output
@@ -46,6 +50,7 @@ Found 1 unresolved comment(s) and 1 failing check(s)
 ## Features
 
 - Detects current PR automatically
+- Accepts PR numbers with optional `--repo` flag
 - Shows unresolved review comments with file/line locations
 - Lists failing status checks with run IDs
 - Filters out resolved discussions
