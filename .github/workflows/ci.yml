@@ -1,0 +1,69 @@
+---
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cashapp/activate-hermit@v1
+
+      - name: Format check
+        run: |
+          if [ -n "$(gofmt -l .)" ]; then
+            echo "Go files not formatted. Run: task format"
+            gofmt -l .
+            exit 1
+          fi
+
+      - name: Build
+        run: task build
+
+      - name: Run tests
+        run: task test
+
+  goreleaser:
+    name: Validate GoReleaser Config
+    runs-on: ubuntu-latest
+    if: contains(github.event.head_commit.modified, '.goreleaser.yaml') || contains(github.event.pull_request.files.*.filename, '.goreleaser.yaml')
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cashapp/activate-hermit@v1
+
+      - name: Validate GoReleaser config
+        run: bin/goreleaser check
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cashapp/activate-hermit@v1
+
+      - name: Check formatting
+        run: |
+          if [ -n "$(gofmt -l .)" ]; then
+            echo "Go files not formatted:"
+            gofmt -l .
+            exit 1
+          fi
+
+      - name: Run golangci-lint
+        run: task lint
