@@ -27,21 +27,21 @@ const (
 )
 
 type ReviewComment struct {
-	ID              int    `json:"id"`
-	Body            string `json:"body"`
-	Path            string `json:"path"`
-	Line            *int   `json:"line"`
-	StartLine       *int   `json:"start_line"`
-	OriginalLine    *int   `json:"original_line,omitempty"`
-	DiffHunk        string `json:"diff_hunk,omitempty"`
-	Author          string `json:"author"`
-	AuthorAssoc     string `json:"author_association,omitempty"`
-	State           string `json:"state"`
-	InReplyTo       *int   `json:"in_reply_to_id"`
-	CreatedAt       string `json:"created_at"`
-	UpdatedAt       string `json:"updated_at"`
-	Outdated        bool   `json:"outdated,omitempty"`
-	SubjectType     string `json:"subject_type,omitempty"`
+	ID           int    `json:"id"`
+	Body         string `json:"body"`
+	Path         string `json:"path"`
+	Line         *int   `json:"line"`
+	StartLine    *int   `json:"start_line"`
+	OriginalLine *int   `json:"original_line,omitempty"`
+	DiffHunk     string `json:"diff_hunk,omitempty"`
+	Author       string `json:"author"`
+	AuthorAssoc  string `json:"author_association,omitempty"`
+	State        string `json:"state"`
+	InReplyTo    *int   `json:"in_reply_to_id"`
+	CreatedAt    string `json:"created_at"`
+	UpdatedAt    string `json:"updated_at"`
+	Outdated     bool   `json:"outdated,omitempty"`
+	SubjectType  string `json:"subject_type,omitempty"`
 }
 
 type StatusCheck struct {
@@ -75,23 +75,23 @@ func main() {
 	args := os.Args[1:]
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
-		
+
 		// Handle flags
 		if arg == "--version" || arg == "-v" {
 			fmt.Println("gh-pr-feedback v1.2.0")
 			return
 		}
-		
+
 		if arg == "--help" || arg == "-h" {
 			printHelp()
 			return
 		}
-		
+
 		if arg == "--json" || arg == "-j" {
 			jsonOutput = true
 			continue
 		}
-		
+
 		if arg == "--repo" || arg == "-R" {
 			if i+1 < len(args) {
 				repoName = args[i+1]
@@ -102,7 +102,7 @@ func main() {
 			}
 			continue
 		}
-		
+
 		// Handle positional argument (could be PR number or directory)
 		if !strings.HasPrefix(arg, "-") {
 			// Try to parse as PR number first
@@ -118,7 +118,7 @@ func main() {
 			}
 		}
 	}
-	
+
 	if targetDir == "" {
 		targetDir = "."
 	}
@@ -138,7 +138,7 @@ func main() {
 		}
 		// Ensure we change back on exit
 		defer func() {
-			os.Chdir(originalDir)
+			_ = os.Chdir(originalDir)
 		}()
 	}
 
@@ -233,8 +233,8 @@ func getCurrentPR(client *api.RESTClient) (int, string, error) {
 func getPRFeedback(client *api.RESTClient, repo string, prNumber int) (*PRFeedback, error) {
 	// Get PR details
 	var pr struct {
-		Number int    `json:"number"`
-		Title  string `json:"title"`
+		Number  int    `json:"number"`
+		Title   string `json:"title"`
 		HTMLURL string `json:"html_url"`
 	}
 	endpoint := fmt.Sprintf("repos/%s/pulls/%d", repo, prNumber)
@@ -251,24 +251,24 @@ func getPRFeedback(client *api.RESTClient, repo string, prNumber int) (*PRFeedba
 
 	// Get review comments (line-specific comments)
 	var reviewComments []struct {
-		ID              int    `json:"id"`
-		Body            string `json:"body"`
-		Path            string `json:"path"`
-		Line            *int   `json:"line"`
-		StartLine       *int   `json:"start_line"`
-		OriginalLine    *int   `json:"original_line"`
-		DiffHunk        string `json:"diff_hunk"`
-		AuthorAssoc     string `json:"author_association"`
-		User            struct {
+		ID           int    `json:"id"`
+		Body         string `json:"body"`
+		Path         string `json:"path"`
+		Line         *int   `json:"line"`
+		StartLine    *int   `json:"start_line"`
+		OriginalLine *int   `json:"original_line"`
+		DiffHunk     string `json:"diff_hunk"`
+		AuthorAssoc  string `json:"author_association"`
+		User         struct {
 			Login string `json:"login"`
 		} `json:"user"`
-		InReplyToID     *int   `json:"in_reply_to_id"`
-		CreatedAt       string `json:"created_at"`
-		UpdatedAt       string `json:"updated_at"`
-		Outdated        bool   `json:"outdated"`
-		SubjectType     string `json:"subject_type"`
+		InReplyToID *int   `json:"in_reply_to_id"`
+		CreatedAt   string `json:"created_at"`
+		UpdatedAt   string `json:"updated_at"`
+		Outdated    bool   `json:"outdated"`
+		SubjectType string `json:"subject_type"`
 	}
-	
+
 	reviewEndpoint := fmt.Sprintf("repos/%s/pulls/%d/comments", repo, prNumber)
 	err = client.Get(reviewEndpoint, &reviewComments)
 	if err != nil {
@@ -279,37 +279,37 @@ func getPRFeedback(client *api.RESTClient, repo string, prNumber int) (*PRFeedba
 	for _, comment := range reviewComments {
 		if comment.InReplyToID == nil { // Top-level comment, not a reply
 			feedback.Comments = append(feedback.Comments, ReviewComment{
-				ID:              comment.ID,
-				Body:            comment.Body,
-				Path:            comment.Path,
-				Line:            comment.Line,
-				StartLine:       comment.StartLine,
-				OriginalLine:    comment.OriginalLine,
-				DiffHunk:        comment.DiffHunk,
-				Author:          comment.User.Login,
-				AuthorAssoc:     comment.AuthorAssoc,
-				State:           "unresolved",
-				InReplyTo:       comment.InReplyToID,
-				CreatedAt:       comment.CreatedAt,
-				UpdatedAt:       comment.UpdatedAt,
-				Outdated:        comment.Outdated,
-				SubjectType:     comment.SubjectType,
+				ID:           comment.ID,
+				Body:         comment.Body,
+				Path:         comment.Path,
+				Line:         comment.Line,
+				StartLine:    comment.StartLine,
+				OriginalLine: comment.OriginalLine,
+				DiffHunk:     comment.DiffHunk,
+				Author:       comment.User.Login,
+				AuthorAssoc:  comment.AuthorAssoc,
+				State:        "unresolved",
+				InReplyTo:    comment.InReplyToID,
+				CreatedAt:    comment.CreatedAt,
+				UpdatedAt:    comment.UpdatedAt,
+				Outdated:     comment.Outdated,
+				SubjectType:  comment.SubjectType,
 			})
 		}
 	}
 
 	// Get general PR comments (issue comments)
 	var issueComments []struct {
-		ID         int    `json:"id"`
-		Body       string `json:"body"`
+		ID          int    `json:"id"`
+		Body        string `json:"body"`
 		AuthorAssoc string `json:"author_association"`
-		User       struct {
+		User        struct {
 			Login string `json:"login"`
 		} `json:"user"`
-		CreatedAt  string `json:"created_at"`
-		UpdatedAt  string `json:"updated_at"`
+		CreatedAt string `json:"created_at"`
+		UpdatedAt string `json:"updated_at"`
 	}
-	
+
 	issueEndpoint := fmt.Sprintf("repos/%s/issues/%d/comments", repo, prNumber)
 	err = client.Get(issueEndpoint, &issueComments)
 	if err != nil {
@@ -331,16 +331,16 @@ func getPRFeedback(client *api.RESTClient, repo string, prNumber int) (*PRFeedba
 
 	// Get PR reviews
 	var reviews []struct {
-		ID         int    `json:"id"`
-		Body       string `json:"body"`
-		State      string `json:"state"`
-		User       struct {
+		ID    int    `json:"id"`
+		Body  string `json:"body"`
+		State string `json:"state"`
+		User  struct {
 			Login string `json:"login"`
 		} `json:"user"`
 		AuthorAssoc string `json:"author_association"`
 		SubmittedAt string `json:"submitted_at"`
 	}
-	
+
 	reviewsEndpoint := fmt.Sprintf("repos/%s/pulls/%d/reviews", repo, prNumber)
 	err = client.Get(reviewsEndpoint, &reviews)
 	if err != nil {
@@ -440,7 +440,6 @@ func extractRunID(detailsURL string) string {
 	return ""
 }
 
-
 func printHelp() {
 	fmt.Println("Usage: gh pr-feedback [flags] [pr-number|directory]")
 	fmt.Println("Extracts unresolved review feedback from a PR")
@@ -466,11 +465,11 @@ func printHumanReadable(feedback *PRFeedback) {
 	// Calculate counts
 	commentCount := len(feedback.Comments) + len(feedback.GeneralIssues)
 	checkCount := len(feedback.StatusChecks)
-	
+
 	// PR Title and metadata
 	fmt.Printf("%s%s #%d%s\n", colorBold, feedback.Title, feedback.PRNumber, colorReset)
-	fmt.Printf("%sOpen%s • %s\n", colorGreen, colorReset, colorGray + feedback.URL + colorReset)
-	
+	fmt.Printf("%sOpen%s • %s\n", colorGreen, colorReset, colorGray+feedback.URL+colorReset)
+
 	// Feedback summary
 	if commentCount > 0 || checkCount > 0 {
 		fmt.Printf("\n")
@@ -490,11 +489,11 @@ func printHumanReadable(feedback *PRFeedback) {
 		if len(feedback.GeneralIssues) > 0 {
 			for _, review := range feedback.GeneralIssues {
 				// Review header like GitHub
-				fmt.Printf("%s%s%s commented %s(%s)%s • %s", 
+				fmt.Printf("%s%s%s commented %s(%s)%s • %s",
 					colorBold, review.Author, colorReset,
-					colorGray, strings.Title(strings.ToLower(review.AuthorAssoc)), colorReset,
+					colorGray, toTitle(review.AuthorAssoc), colorReset,
 					colorGray)
-				
+
 				if review.CreatedAt != "" {
 					if t, err := parseTime(review.CreatedAt); err == nil {
 						ago := formatTimeAgo(time.Since(t))
@@ -502,7 +501,7 @@ func printHumanReadable(feedback *PRFeedback) {
 					}
 				}
 				fmt.Printf("%s\n\n", colorReset)
-				
+
 				// Review body
 				lines := strings.Split(review.Body, "\n")
 				for _, line := range lines {
@@ -511,17 +510,16 @@ func printHumanReadable(feedback *PRFeedback) {
 				fmt.Println()
 			}
 		}
-		
+
 		// Then show file-specific comments
 		if len(feedback.Comments) > 0 {
 			fmt.Println(strings.Repeat("─", 100))
-			fmt.Println()
-			
+
 			for i, comment := range feedback.Comments {
 				// Author and metadata on one line
 				fmt.Printf("%s%s%s", colorBold, comment.Author, colorReset)
 				if comment.AuthorAssoc != "" && comment.AuthorAssoc != "NONE" {
-					fmt.Printf(" • %s", colorGray + strings.ToLower(comment.AuthorAssoc) + colorReset)
+					fmt.Printf(" • %s", colorGray+strings.ToLower(comment.AuthorAssoc)+colorReset)
 				}
 				if comment.CreatedAt != "" {
 					if t, err := parseTime(comment.CreatedAt); err == nil {
@@ -532,15 +530,15 @@ func printHumanReadable(feedback *PRFeedback) {
 				if comment.Outdated {
 					fmt.Printf(" %s• Outdated%s", colorYellow, colorReset)
 				}
-				fmt.Println("\n")
-				
+				fmt.Println()
+
 				// Comment body
 				lines := strings.Split(comment.Body, "\n")
 				for _, line := range lines {
 					fmt.Printf("%s\n", line)
 				}
 				fmt.Println()
-				
+
 				// File location in a box
 				if comment.Path != "" {
 					fmt.Printf("%s%s", colorBlue, comment.Path)
@@ -548,14 +546,14 @@ func printHumanReadable(feedback *PRFeedback) {
 						fmt.Printf(" on line %d", *comment.Line)
 					}
 					fmt.Printf("%s\n", colorReset)
-					
+
 					// Show diff context
 					if comment.DiffHunk != "" && !comment.Outdated {
 						fmt.Println()
 						printDiffHunk(comment.DiffHunk)
 					}
 				}
-				
+
 				// Separator between comments
 				if i < len(feedback.Comments)-1 {
 					fmt.Println("\n" + strings.Repeat("─", 100) + "\n")
@@ -564,12 +562,11 @@ func printHumanReadable(feedback *PRFeedback) {
 		}
 	}
 
-
 	// Status Checks Section
 	if len(feedback.StatusChecks) > 0 {
 		fmt.Println("\n" + strings.Repeat("─", 100) + "\n")
 		fmt.Printf("%sFailed Checks%s\n\n", colorBold, colorReset)
-		
+
 		for _, check := range feedback.StatusChecks {
 			symbol := "✗"
 			symbolColor := colorRed
@@ -577,9 +574,9 @@ func printHumanReadable(feedback *PRFeedback) {
 				symbol = "⊘"
 				symbolColor = colorYellow
 			}
-			
+
 			fmt.Printf("%s%s%s %s", symbolColor, symbol, colorReset, check.Name)
-			
+
 			// Duration
 			if check.StartedAt != "" && check.CompletedAt != "" {
 				start, _ := parseTime(check.StartedAt)
@@ -589,7 +586,7 @@ func printHumanReadable(feedback *PRFeedback) {
 					fmt.Printf(" %s(took %s)%s", colorGray, formatDuration(diff), colorReset)
 				}
 			}
-			
+
 			if check.CheckCommand != "" {
 				fmt.Printf(" → %s%s%s", colorCyan, check.CheckCommand, colorReset)
 			}
@@ -619,7 +616,7 @@ func printDiffHunk(diffHunk string) {
 		if len(line) == 0 {
 			continue
 		}
-		
+
 		switch line[0] {
 		case '+':
 			fmt.Printf("    %s%s%s\n", colorGreen, line, colorReset)
@@ -670,4 +667,12 @@ func formatTimeAgo(d time.Duration) string {
 		return "1 year ago"
 	}
 	return fmt.Sprintf("%d years ago", years)
+}
+
+func toTitle(s string) string {
+	if s == "" {
+		return s
+	}
+	lower := strings.ToLower(s)
+	return strings.ToUpper(lower[:1]) + lower[1:]
 }
